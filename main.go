@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -25,9 +26,11 @@ var coll *mongo.Collection
 func main() {
 	fmt.Println("hello world")
 
-	// Load the .env file
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+	if os.Getenv("ENV") != "production" {
+		// Load the .env file
+		if err := godotenv.Load(); err != nil {
+			log.Fatal("Error loading .env file")
+		}
 	}
 
 	// Get the MongoDB URI from the environment variable
@@ -57,6 +60,11 @@ func main() {
 
 	app := fiber.New()
 
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "http://localhost:5173",
+		AllowHeaders: "Origin,Content-Type,Accepted",
+	}))
+
 	app.Get("/api/todos", getTodos)
 	app.Post("/api/todos", createTodos)
 	app.Patch("/api/todos/:id", updateTodos)
@@ -65,6 +73,10 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5000"
+	}
+
+	if os.Getenv("ENV") == "production" {
+		app.Static("/", "./client/dist")
 	}
 
 	log.Fatal(app.Listen("0.0.0.0:" + port))
@@ -143,7 +155,7 @@ func deleteTodos(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return c.Status(200).JSON(fiber.Map{"success": true})
 
 }
